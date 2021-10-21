@@ -1,30 +1,39 @@
 package com.company;
 
+import java.util.EmptyStackException;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Calculator {
 
-    public double decide(String expression){
+    public double decide(String expression) {
         String rpn = getRpn(expression);
-        System.out.println(rpn);
         return RPNtoAnswer(rpn);
     }
 
-    public String getRpn(String expression){
+    public String getRpn(String expression) {
+        if (isSymbolSearch(expression)) {
+            return "Error";
+        }
         String preparied = preparingExpression(expression);
-        String rpn = ExpressionToRPN(preparied);
-        return rpn;
+        return ExpressionToRPN(preparied);
     }
 
-    private String preparingExpression(String expression){
+    private Boolean isSymbolSearch(String expression) {
+        Pattern pattern = Pattern.compile("[a-z]", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(expression);
+        return matcher.find();
+    }
+
+    private String preparingExpression(String expression) {
         StringBuilder preparingExpression = new StringBuilder();
         for (int token = 0; token < expression.length(); token++) {
             char symbol = expression.charAt(token);
-            if (symbol == '-'){
-                if (token == 0){
+            if (symbol == '-') {
+                if (token == 0) {
                     preparingExpression.append(0);
-                }
-                else if (expression.charAt(token - 1) == '('){
+                } else if (expression.charAt(token - 1) == '(') {
                     preparingExpression.append(0);
                 }
             }
@@ -33,7 +42,7 @@ public class Calculator {
         return preparingExpression.toString();
     }
 
-    private String ExpressionToRPN(String expression){
+    private String ExpressionToRPN(String expression) {
         StringBuilder current = new StringBuilder();
         Stack<Character> stack = new Stack<>();
 
@@ -41,21 +50,21 @@ public class Calculator {
         for (int i = 0; i < expression.length(); i++) {
             priority = getPriority(expression.charAt(i));
 
-            if(priority == 0) current.append(expression.charAt(i));
-            if(priority == 1) stack.push(expression.charAt(i));
+            if (priority == 0) current.append(expression.charAt(i));
+            if (priority == 1) stack.push(expression.charAt(i));
 
-            if(priority > 1){
+            if (priority > 1) {
                 current.append(' ');
-                while (!stack.empty()){
-                    if(getPriority(stack.peek()) >= priority) current.append(stack.pop());
-                    else break;;
+                while (!stack.empty()) {
+                    if (getPriority(stack.peek()) >= priority) current.append(stack.pop());
+                    else break;
                 }
                 stack.push(expression.charAt(i));
             }
 
-            if(priority == -1){
+            if (priority == -1) {
                 current.append(' ');
-                while(getPriority(stack.peek()) != 1){
+                while (getPriority(stack.peek()) != 1) {
                     current.append(stack.pop());
                 }
                 stack.pop();
@@ -67,37 +76,57 @@ public class Calculator {
         return current.toString();
     }
 
-    private Double RPNtoAnswer(String rpn){
+
+    private Double RPNtoAnswer(String rpn) {
         StringBuilder operand = new StringBuilder();
         Stack<Double> stack = new Stack<>();
 
         for (int i = 0; i < rpn.length(); i++) {
-            if(rpn.charAt(i) == ' ') continue;
+            if (rpn.charAt(i) == ' ') continue;
 
-            if(getPriority(rpn.charAt(i)) == 0){
+            if (getPriority(rpn.charAt(i)) == 0) {
                 while (rpn.charAt(i) != ' ' && getPriority(rpn.charAt(i)) == 0) {
                     operand.append(rpn.charAt(i++));
-                    if (i == rpn.length()){
+                    if (i == rpn.length()) {
                         break;
                     }
                 }
-                stack.push(Double.parseDouble(operand.toString()));
+                try {
+                    stack.push(Double.parseDouble(operand.toString()));
+                } catch (NumberFormatException numberFormatException) {
+                    System.out.println("Expression with alphabet letters");
+                    System.out.println(numberFormatException);
+                    return 0.0;
+                }
+
                 operand = new StringBuilder();
             }
 
-            if (getPriority(rpn.charAt(i)) > 1){
-                double a = stack.pop(), b =stack.pop();
+            if (getPriority(rpn.charAt(i)) > 1) {
+                try {
+                    double a = stack.pop(), b = stack.pop();
 
-                if (rpn.charAt(i) == '+') stack.push(b + a);
-                if (rpn.charAt(i) == '-') stack.push(b - a);
-                if (rpn.charAt(i) == '*') stack.push(b * a);
-                if (rpn.charAt(i) == '/') stack.push(b / a);
+                    switch (rpn.charAt(i)) {
+                        case '+' -> stack.push(b + a);
+                        case '-' -> stack.push(b - a);
+                        case '*' -> stack.push(b * a);
+                        case '/' -> stack.push(b / a);
+                    }
+                } catch (EmptyStackException emptyStackException) {
+                    System.out.println("Absence of brackets");
+                    System.out.println(emptyStackException);
+                    return 0.0;
+                } catch (Exception exception) {
+                    System.out.println(exception);
+                    return 0.0;
+                }
             }
+
         }
         return stack.pop();
     }
 
-    private int getPriority(char token){
+    private int getPriority(char token) {
         if (token == ')') return -1;
         else if (token == '(') return 1;
         else if (token == '+' || token == '-') return 2;
